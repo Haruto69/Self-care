@@ -1,12 +1,13 @@
 import { Check } from "lucide-react";
 
-function TaskCard({ task, onToggle }) {
+function TaskCard({ task, onToggle, disabled = false }) {
   return (
     <article className={`task-card ${task.completed ? "complete" : ""}`}>
       <button
         type="button"
         className="check-button"
         onClick={() => onToggle(task._id)}
+        disabled={disabled}
         aria-label={task.completed ? "Mark task incomplete" : "Mark task complete"}
       >
         {task.completed && <Check size={17} />}

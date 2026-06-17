@@ -9,6 +9,8 @@ import { getCompletionRate, getGoalDefinition, groupTasksByGoal } from "../utils
 function DashboardPage() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [togglingIds, setTogglingIds] = useState([]);
   const [error, setError] = useState("");
 
   const completion = getCompletionRate(tasks);
@@ -40,15 +42,48 @@ function DashboardPage() {
   }, []);
 
   const toggleTask = async (id) => {
-    const updated = await taskService.toggle(id);
-    setTasks((current) => current.map((task) => (task._id === id ? updated : task)));
+    const previousTask = tasks.find((task) => task._id === id);
+
+    if (!previousTask || togglingIds.includes(id)) return;
+
+    setError("");
+    setTogglingIds((current) => [...current, id]);
+    setTasks((current) =>
+      current.map((task) =>
+        task._id === id
+          ? {
+              ...task,
+              completed: !task.completed,
+              completedAt: !task.completed ? new Date().toISOString() : null
+            }
+          : task
+      )
+    );
+
+    try {
+      const updated = await taskService.toggle(id);
+      setTasks((current) => current.map((task) => (task._id === id ? updated : task)));
+    } catch (apiError) {
+      setTasks((current) => current.map((task) => (task._id === id ? previousTask : task)));
+      setError(apiError.response?.data?.message || "Could not update that task. Your change was undone.");
+    } finally {
+      setTogglingIds((current) => current.filter((taskId) => taskId !== id));
+    }
   };
 
   const regenerateTasks = async () => {
-    setLoading(true);
-    const generated = await taskService.generate();
-    setTasks(generated.tasks);
-    setLoading(false);
+    setRefreshing(true);
+    setError("");
+
+    try {
+      const generated = await taskService.generate();
+      setTasks(generated.tasks);
+    } catch (apiError) {
+      setError(apiError.response?.data?.message || "Could not refresh today's tasks. Please try again.");
+    } finally {
+      setRefreshing(false);
+      setLoading(false);
+    }
   };
 
   if (loading) return <LoadingSpinner label="Loading today's plan" />;
@@ -73,9 +108,9 @@ function DashboardPage() {
       {error && <p className="alert">{error}</p>}
 
       <div className="action-row">
-        <button className="button secondary" onClick={regenerateTasks}>
+        <button className="button secondary" onClick={regenerateTasks} disabled={refreshing}>
           <RefreshCw size={18} />
-          Refresh tasks
+          {refreshing ? "Refreshing" : "Refresh tasks"}
         </button>
         <Link to="/goals" className="button quiet">
           <Target size={18} />
@@ -109,7 +144,12 @@ function DashboardPage() {
                 </div>
                 <div className="task-list">
                   {group.tasks.map((task) => (
-                    <TaskCard task={task} onToggle={toggleTask} key={task._id} />
+                    <TaskCard
+                      task={task}
+                      onToggle={toggleTask}
+                      disabled={togglingIds.includes(task._id)}
+                      key={task._id}
+                    />
                   ))}
                 </div>
               </section>

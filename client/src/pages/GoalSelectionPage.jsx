@@ -10,18 +10,24 @@ function GoalSelectionPage() {
   const navigate = useNavigate();
   const [selected, setSelected] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const loadGoals = async () => {
+    setLoading(true);
+    setError("");
+
+    try {
+      const goals = await goalService.list();
+      const activeTypes = goals.filter((goal) => goal.isActive).map((goal) => goal.goalType);
+      setSelected(activeTypes);
+    } catch (apiError) {
+      setError(apiError.response?.data?.message || "Could not load your goals. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadGoals = async () => {
-      try {
-        const goals = await goalService.list();
-        const activeTypes = goals.filter((goal) => goal.isActive).map((goal) => goal.goalType);
-        setSelected(activeTypes);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadGoals();
   }, []);
 
@@ -47,6 +53,15 @@ function GoalSelectionPage() {
         <h1>Choose your focus areas</h1>
         <p>Pick one or more areas for your daily self-care rhythm.</p>
       </div>
+
+      {error && (
+        <p className="alert">
+          {error}{" "}
+          <button className="inline-action" type="button" onClick={loadGoals}>
+            Retry
+          </button>
+        </p>
+      )}
 
       <div className="goal-grid">
         {Object.entries(GOAL_DEFINITIONS).map(([goalType, goal]) => (

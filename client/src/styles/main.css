@@ -711,6 +711,16 @@ a {
   color: var(--muted);
 }
 
+.inline-action {
+  margin-left: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-weight: 900;
+  text-decoration: underline;
+}
+
 @keyframes spin {
   to {
     transform: rotate(360deg);

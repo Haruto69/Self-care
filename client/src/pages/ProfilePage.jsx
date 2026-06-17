@@ -8,11 +8,19 @@ function ProfilePage() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
   const [resetting, setResetting] = useState(false);
 
   const handleLogout = () => {
-    logout();
-    navigate("/");
+    setError("");
+    setMessage("");
+
+    try {
+      logout();
+      navigate("/");
+    } catch (logoutError) {
+      setError("Could not log you out. Please try again.");
+    }
   };
 
   const resetData = async () => {
@@ -22,6 +30,7 @@ function ProfilePage() {
 
     setResetting(true);
     setMessage("");
+    setError("");
 
     try {
       const goals = await goalService.list();
@@ -29,7 +38,7 @@ function ProfilePage() {
       localStorage.removeItem("pendingGoalTypes");
       setMessage("Your goals and generated task history have been reset.");
     } catch (apiError) {
-      setMessage(apiError.response?.data?.message || "Could not reset your data.");
+      setError(apiError.response?.data?.message || "Could not reset your data. Please try again.");
     } finally {
       setResetting(false);
     }
@@ -67,6 +76,7 @@ function ProfilePage() {
         </button>
       </article>
 
+      {error && <p className="alert">{error}</p>}
       {message && <p className="notice">{message}</p>}
     </section>
   );
