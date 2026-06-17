@@ -62,20 +62,23 @@ client/
 Backend `server/.env`:
 
 ```env
+NODE_ENV=development
 PORT=5000
 MONGO_URI=mongodb://127.0.0.1:27017/self-care
 JWT_SECRET=replace_this_with_a_long_random_secret
 CLIENT_URL=http://localhost:5173
-NODE_ENV=development
+CLIENT_URLS=http://localhost:5173
 ```
 
 Frontend `client/.env`:
 
 ```env
-VITE_API_URL=http://localhost:5000/api
+VITE_API_URL=http://localhost:5000
 ```
 
 Example files are included at `server/.env.example` and `client/.env.example`.
+
+For production setup on Vercel, Render, and MongoDB Atlas, see [DEPLOYMENT.md](DEPLOYMENT.md).
 
 ## Local Setup
 
