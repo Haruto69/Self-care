@@ -1,39 +1,81 @@
 # Self-care
 
-A beginner-friendly MERN self-care app that lets users choose improvement goals,
-answer setup questions, and receive daily tasks for body, skincare, and focus.
+Self-care is a beginner-friendly MERN web app that helps users choose personal improvement goals, answer setup questions, and receive daily rules-based tasks for body, skincare, and focus.
+
+## Current V1 Features
+
+- User signup, login, and protected routes.
+- Goal selection for:
+  - Exercise / Bodybuilding
+  - Acne Reduction / Skincare
+  - Focus / Studying
+- Template-driven setup forms for each goal.
+- Rules-based daily task generation from user inputs.
+- Dashboard with today's tasks grouped by goal.
+- Task completion checkboxes and completion percentage.
+- Progress page with simple goal summaries.
+- Profile/settings page with logout and data reset.
+- Backend validation for goal options, dates, and ObjectIds.
+- Automated backend and frontend tests.
 
 ## Tech Stack
 
 - MongoDB with Mongoose
 - Express.js and Node.js
 - React with Vite
+- React Router
+- Axios
 - JWT authentication
 - bcrypt password hashing
 - Plain CSS
+- Vitest, Supertest, MongoDB Memory Server, and Testing Library for tests
 
 ## Project Structure
 
 ```txt
 server/
+  app.js
+  server.js
   config/
   controllers/
+  goalRules/
   middleware/
   models/
   routes/
+  tests/
   utils/
-  server.js
 
 client/
   src/
     components/
-    pages/
     data/
     hooks/
+    pages/
     services/
-    utils/
     styles/
+    test/
+    utils/
 ```
+
+## Environment Variables
+
+Backend `server/.env`:
+
+```env
+PORT=5000
+MONGO_URI=mongodb://127.0.0.1:27017/self-care
+JWT_SECRET=replace_this_with_a_long_random_secret
+CLIENT_URL=http://localhost:5173
+NODE_ENV=development
+```
+
+Frontend `client/.env`:
+
+```env
+VITE_API_URL=http://localhost:5000/api
+```
+
+Example files are included at `server/.env.example` and `client/.env.example`.
 
 ## Local Setup
 
@@ -52,33 +94,63 @@ cp .env.example .env
 
 Update `server/.env` if your MongoDB URL or frontend URL is different.
 
-3. Start the backend.
+3. Start MongoDB locally.
+
+Use your local MongoDB service, Docker, or MongoDB Compass connection. The default URL is:
+
+```txt
+mongodb://127.0.0.1:27017/self-care
+```
+
+4. Start the backend.
 
 ```bash
 npm run dev
 ```
 
-4. Install frontend dependencies in a second terminal.
+5. Install frontend dependencies in a second terminal.
 
 ```bash
 cd client
 npm install
 ```
 
-5. Create the frontend environment file.
+6. Create the frontend environment file.
 
 ```bash
 cp .env.example .env
 ```
 
-6. Start the frontend.
+7. Start the frontend.
 
 ```bash
 npm run dev
 ```
 
-The frontend runs at `http://localhost:5173` and the API runs at
-`http://localhost:5000`.
+The frontend runs at `http://localhost:5173` and the API runs at `http://localhost:5000`.
+
+## Test Commands
+
+Backend tests:
+
+```bash
+cd server
+npm test
+```
+
+Frontend tests:
+
+```bash
+cd client
+npm test
+```
+
+Frontend production build:
+
+```bash
+cd client
+npm run build
+```
 
 ## Main API Routes
 
@@ -111,7 +183,8 @@ Check-ins:
 
 ## Notes
 
-- The task generator is rules-based. No AI features are included yet.
+- The task generator is rules-based. No AI features are included in V1.
+- Check-in API routes exist, but there is no check-in UI yet.
 - Deleting a goal also deletes its related tasks and check-ins.
-- The profile page reset action deletes all goals for the current user, which also
-  clears generated task history and check-ins.
+- The profile page reset action deletes all goals for the current user, which also clears generated task history and check-ins.
+- JWT is stored in `localStorage` for V1. Move auth to httpOnly cookies before production hardening.
