@@ -1,7 +1,7 @@
 import Goal from "../models/Goal.js";
 import Task from "../models/Task.js";
 import asyncHandler from "../utils/asyncHandler.js";
-import { buildTasksForGoal } from "../utils/taskGenerator.js";
+import { buildTasksForGoal } from "../goalRules/index.js";
 import { cleanupDuplicateGeneratedTasks } from "../utils/taskMaintenance.js";
 import { validateDateOnly, validateObjectId, validatePositiveDays } from "../utils/validation.js";
 

@@ -1,4 +1,4 @@
-import { GOAL_DEFINITIONS } from "../data/goalQuestions.js";
+import { GOAL_DEFINITIONS } from "../data/goalTemplates.js";
 
 export const getGoalDefinition = (goalType) => {
   return GOAL_DEFINITIONS[goalType] || {

@@ -1,4 +1,5 @@
 import mongoose from "mongoose";
+import { GOAL_TYPES } from "../goalRules/index.js";
 
 const goalSchema = new mongoose.Schema(
   {
@@ -9,7 +10,7 @@ const goalSchema = new mongoose.Schema(
     },
     goalType: {
       type: String,
-      enum: ["exercise", "skincare", "focus"],
+      enum: GOAL_TYPES,
       required: true
     },
     selectedOptions: {

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import LoadingSpinner from "../components/LoadingSpinner.jsx";
 import SetupForm from "../components/SetupForm.jsx";
-import { GOAL_QUESTIONS } from "../data/goalQuestions.js";
+import { GOAL_QUESTIONS } from "../data/goalTemplates.js";
 import { goalService, taskService } from "../services/api.js";
 
 const readPendingGoals = () => {
@@ -24,7 +24,16 @@ const getReusableGoal = (goals, goalType) => {
 const buildInitialAnswers = (goalTypes, goals = []) => {
   return goalTypes.reduce((result, goalType) => {
     const defaults = (GOAL_QUESTIONS[goalType] || []).reduce((answers, question) => {
-      answers[question.name] = question.type === "multi" ? [] : "";
+      const defaultValue =
+        question.defaultValue !== undefined
+          ? Array.isArray(question.defaultValue)
+            ? [...question.defaultValue]
+            : question.defaultValue
+          : question.type === "multi"
+            ? []
+            : "";
+
+      answers[question.name] = defaultValue;
       return answers;
     }, {});
 

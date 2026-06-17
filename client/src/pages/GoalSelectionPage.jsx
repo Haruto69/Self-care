@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import GoalCard from "../components/GoalCard.jsx";
 import LoadingSpinner from "../components/LoadingSpinner.jsx";
-import { GOAL_DEFINITIONS } from "../data/goalQuestions.js";
+import { GOAL_DEFINITIONS } from "../data/goalTemplates.js";
 import { goalService } from "../services/api.js";
 
 function GoalSelectionPage() {

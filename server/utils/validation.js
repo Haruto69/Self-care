@@ -1,116 +1,12 @@
 import mongoose from "mongoose";
+import { GOAL_TYPES as RULE_GOAL_TYPES, getGoalRule } from "../goalRules/index.js";
 import { badRequest } from "./httpErrors.js";
 
-export const GOAL_TYPES = ["exercise", "skincare", "focus"];
-
-const yesNo = ["Yes", "No"];
-
-const goalOptionSchemas = {
-  exercise: [
-    {
-      name: "primaryGoal",
-      type: "select",
-      required: true,
-      options: ["Gain weight", "Lose weight", "Build muscle", "Recomposition"]
-    },
-    { name: "age", type: "number", required: true, min: 10 },
-    {
-      name: "gender",
-      type: "select",
-      required: true,
-      options: ["Female", "Male", "Non-binary", "Prefer not to say"]
-    },
-    { name: "height", type: "number", required: true, min: 80 },
-    { name: "currentWeight", type: "number", required: true, min: 20 },
-    { name: "targetWeight", type: "number", required: true, min: 20 },
-    {
-      name: "experienceLevel",
-      type: "select",
-      required: true,
-      options: ["Never", "Beginner", "Intermediate", "Advanced"]
-    },
-    { name: "trainingDaysPerWeek", type: "number", required: true, min: 1, max: 7 },
-    {
-      name: "timePerWorkout",
-      type: "select",
-      required: true,
-      options: ["30 min", "45 min", "60 min", "90+ min"]
-    },
-    { name: "gymAccess", type: "select", required: true, options: yesNo },
-    {
-      name: "homeEquipment",
-      type: "multi",
-      required: false,
-      options: ["Dumbbells", "Resistance bands", "Pull-up bar", "None"]
-    },
-    { name: "averageSleepDuration", type: "number", required: true, min: 0, max: 14 },
-    { name: "dailyWaterIntake", type: "number", required: true, min: 0 },
-    {
-      name: "dietaryPreference",
-      type: "select",
-      required: true,
-      options: ["Vegetarian", "Non-vegetarian", "Vegan"]
-    }
-  ],
-  skincare: [
-    {
-      name: "acneSeverity",
-      type: "select",
-      required: true,
-      options: ["Mild", "Moderate", "Severe"]
-    },
-    { name: "washesFaceDaily", type: "select", required: true, options: yesNo },
-    { name: "usesSunscreen", type: "select", required: true, options: yesNo },
-    { name: "usesMoisturizer", type: "select", required: true, options: yesNo },
-    { name: "averageSleepDuration", type: "number", required: true, min: 0, max: 14 },
-    { name: "waterIntakePerDay", type: "number", required: true, min: 0 },
-    {
-      name: "faceTouchFrequency",
-      type: "select",
-      required: true,
-      options: ["Never", "Sometimes", "Often"]
-    },
-    {
-      name: "pillowcaseFrequency",
-      type: "select",
-      required: true,
-      options: ["Weekly", "Every 2 weeks", "Monthly", "Rarely"]
-    }
-  ],
-  focus: [
-    {
-      name: "focusObjective",
-      type: "select",
-      required: true,
-      options: ["School", "College", "Competitive exams", "Coding", "Work", "Personal learning"]
-    },
-    { name: "currentFocusHours", type: "number", required: true, min: 0, max: 16 },
-    { name: "targetFocusHours", type: "number", required: true, min: 0.5, max: 16 },
-    {
-      name: "mainDistraction",
-      type: "select",
-      required: true,
-      options: ["Phone", "Social media", "YouTube", "Gaming", "Daydreaming", "Procrastination"]
-    },
-    {
-      name: "preferredSessionLength",
-      type: "select",
-      required: true,
-      options: ["25 min", "45 min", "60 min", "90 min"]
-    },
-    {
-      name: "studyEnvironment",
-      type: "select",
-      required: true,
-      options: ["Home", "Library", "College", "Cafe"]
-    },
-    { name: "strictDailyTargets", type: "select", required: true, options: yesNo }
-  ]
-};
+export const GOAL_TYPES = RULE_GOAL_TYPES;
 
 export const validateGoalType = (goalType) => {
-  if (!GOAL_TYPES.includes(goalType)) {
-    throw badRequest("goalType must be one of: exercise, skincare, focus");
+  if (!getGoalRule(goalType)) {
+    throw badRequest(`goalType must be one of: ${GOAL_TYPES.join(", ")}`);
   }
 
   return goalType;
@@ -198,7 +94,7 @@ export const validateSelectedOptions = (goalType, selectedOptions) => {
     throw badRequest("selectedOptions must be an object");
   }
 
-  const schema = goalOptionSchemas[goalType];
+  const schema = getGoalRule(goalType).setupFields;
   const normalized = {};
 
   for (const field of schema) {

@@ -1,4 +1,4 @@
-import { GOAL_QUESTIONS } from "../data/goalQuestions.js";
+import { GOAL_QUESTIONS } from "../data/goalTemplates.js";
 import { getGoalDefinition } from "../utils/goalLabels.js";
 
 function SetupForm({ goalType, answers, onChange }) {
@@ -33,7 +33,7 @@ function SetupForm({ goalType, answers, onChange }) {
               <select
                 value={answers[question.name] || ""}
                 onChange={(event) => updateAnswer(question.name, event.target.value)}
-                required
+                required={question.required}
               >
                 <option value="">Select</option>
                 {question.options.map((option) => (
@@ -52,7 +52,7 @@ function SetupForm({ goalType, answers, onChange }) {
                 max={question.max}
                 step={question.step || "1"}
                 onChange={(event) => updateAnswer(question.name, event.target.value)}
-                required
+                required={question.required}
               />
             )}
 
