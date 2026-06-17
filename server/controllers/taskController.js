@@ -94,7 +94,6 @@ export const generateTasks = asyncHandler(async (req, res) => {
               goalId: goal._id,
               date: today,
               taskKey: task.taskKey,
-              source: "generated",
               completed: false,
               completedAt: null,
               createdAt: new Date()
