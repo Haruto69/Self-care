@@ -7,6 +7,7 @@ import authRoutes from "./routes/authRoutes.js";
 import checkInRoutes from "./routes/checkInRoutes.js";
 import goalRoutes from "./routes/goalRoutes.js";
 import taskRoutes from "./routes/taskRoutes.js";
+import { syncTaskIndexes } from "./utils/taskMaintenance.js";
 
 dotenv.config();
 
@@ -34,7 +35,8 @@ app.use(notFound);
 app.use(errorHandler);
 
 connectDB()
-  .then(() => {
+  .then(async () => {
+    await syncTaskIndexes();
     app.listen(PORT, () => {
       console.log(`Server listening on port ${PORT}`);
     });

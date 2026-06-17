@@ -2,6 +2,7 @@ import Goal from "../models/Goal.js";
 import Task from "../models/Task.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import { buildTasksForGoal } from "../utils/taskGenerator.js";
+import { cleanupDuplicateGeneratedTasks } from "../utils/taskMaintenance.js";
 import { validateDateOnly, validateObjectId, validatePositiveDays } from "../utils/validation.js";
 
 const taskPopulate = {
@@ -11,6 +12,26 @@ const taskPopulate = {
 
 const getActiveGoalIds = async (userId) => {
   return Goal.find({ userId, isActive: true }).distinct("_id");
+};
+
+const removeStaleGeneratedTasks = async ({ userId, goalId, date, taskKeys }) => {
+  const staleKeyFilter = taskKeys.length
+    ? {
+        $or: [
+          { taskKey: { $exists: false } },
+          { taskKey: null },
+          { taskKey: { $nin: taskKeys } }
+        ]
+      }
+    : {};
+
+  await Task.deleteMany({
+    userId,
+    goalId,
+    date,
+    source: { $ne: "manual" },
+    ...staleKeyFilter
+  });
 };
 
 export const getTodayTasks = asyncHandler(async (req, res) => {
@@ -37,6 +58,20 @@ export const generateTasks = asyncHandler(async (req, res) => {
 
   for (const goal of goals) {
     const generated = buildTasksForGoal(goal, today);
+    const generatedTaskKeys = generated.map((task) => task.taskKey);
+
+    await removeStaleGeneratedTasks({
+      userId: req.user._id,
+      goalId: goal._id,
+      date: today,
+      taskKeys: generatedTaskKeys
+    });
+
+    await cleanupDuplicateGeneratedTasks({
+      userId: req.user._id,
+      date: today,
+      goalIds: [goal._id]
+    });
 
     for (const task of generated) {
       operations.push({
@@ -51,13 +86,15 @@ export const generateTasks = asyncHandler(async (req, res) => {
             $set: {
               title: task.title,
               description: task.description,
-              frequency: task.frequency
+              frequency: task.frequency,
+              source: "generated"
             },
             $setOnInsert: {
               userId: req.user._id,
               goalId: goal._id,
               date: today,
               taskKey: task.taskKey,
+              source: "generated",
               completed: false,
               completedAt: null,
               createdAt: new Date()
