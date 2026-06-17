@@ -2,10 +2,18 @@ import CheckIn from "../models/CheckIn.js";
 import Goal from "../models/Goal.js";
 import Task from "../models/Task.js";
 import asyncHandler from "../utils/asyncHandler.js";
-import { getDateOnly } from "../utils/dateUtils.js";
+import { validateDateOnly, validateObjectId } from "../utils/validation.js";
 
 export const createCheckIn = asyncHandler(async (req, res) => {
   const { goalId, date = new Date(), metrics = {}, notes = "" } = req.body;
+
+  validateObjectId(goalId, "goal id");
+
+  if (!metrics || typeof metrics !== "object" || Array.isArray(metrics)) {
+    res.status(400);
+    throw new Error("metrics must be an object");
+  }
+
   const goal = await Goal.findOne({ _id: goalId, userId: req.user._id });
 
   if (!goal) {
@@ -16,7 +24,7 @@ export const createCheckIn = asyncHandler(async (req, res) => {
   const checkIn = await CheckIn.create({
     userId: req.user._id,
     goalId,
-    date: getDateOnly(date),
+    date: validateDateOnly(date, "date"),
     metrics,
     notes
   });
@@ -28,6 +36,7 @@ export const getCheckIns = asyncHandler(async (req, res) => {
   const query = { userId: req.user._id };
 
   if (req.query.goalId) {
+    validateObjectId(req.query.goalId, "goal id");
     query.goalId = req.query.goalId;
   }
 

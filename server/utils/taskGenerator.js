@@ -34,6 +34,7 @@ const buildExerciseTasks = (options, date) => {
 
   const tasks = [
     {
+      taskKey: "exercise-workout",
       title: hasWorkoutToday ? "Complete today's workout" : "Do a short recovery routine",
       description: hasWorkoutToday
         ? `Train for ${options.timePerWorkout || "45 min"} at your ${
@@ -43,16 +44,19 @@ const buildExerciseTasks = (options, date) => {
       frequency: "daily"
     },
     {
+      taskKey: "exercise-water",
       title: "Drink your water target",
       description: `Aim for ${waterTarget} today.`,
       frequency: "daily"
     },
     {
+      taskKey: "exercise-sleep",
       title: "Sleep at least 7 hours",
       description: `Protect recovery with a ${sleepTarget}-hour sleep window if possible.`,
       frequency: "daily"
     },
     {
+      taskKey: "exercise-protein",
       title: "Hit your protein goal",
       description: `${options.dietaryPreference || "Balanced"} meals should include a clear protein source.`,
       frequency: "daily"
@@ -61,6 +65,7 @@ const buildExerciseTasks = (options, date) => {
 
   if (date.getDay() === 1) {
     tasks.push({
+      taskKey: "exercise-weight-log",
       title: "Log weight weekly",
       description: `Compare your current weight with your ${options.targetWeight || "target"} goal.`,
       frequency: "weekly"
@@ -73,6 +78,7 @@ const buildExerciseTasks = (options, date) => {
 const buildSkincareTasks = (options, date) => {
   const tasks = [
     {
+      taskKey: "skincare-morning-wash",
       title: "Wash face in the morning",
       description: yes(options.washesFaceDaily)
         ? "Keep the routine gentle and consistent."
@@ -80,6 +86,7 @@ const buildSkincareTasks = (options, date) => {
       frequency: "daily"
     },
     {
+      taskKey: "skincare-moisturizer",
       title: "Apply moisturizer",
       description: yes(options.usesMoisturizer)
         ? "Use a light layer after cleansing."
@@ -87,6 +94,7 @@ const buildSkincareTasks = (options, date) => {
       frequency: "daily"
     },
     {
+      taskKey: "skincare-sunscreen",
       title: "Apply sunscreen",
       description: yes(options.usesSunscreen)
         ? "Use sunscreen before daytime outdoor exposure."
@@ -94,16 +102,19 @@ const buildSkincareTasks = (options, date) => {
       frequency: "daily"
     },
     {
+      taskKey: "skincare-night-wash",
       title: "Wash face at night",
       description: "Remove sweat, sunscreen, and oil before bed.",
       frequency: "daily"
     },
     {
+      taskKey: "skincare-no-picking",
       title: "Do not pick acne",
       description: `Your current picking pattern is ${options.faceTouchFrequency || "Sometimes"}; keep hands away today.`,
       frequency: "daily"
     },
     {
+      taskKey: "skincare-water",
       title: "Drink skin-supportive water",
       description: `Aim for ${options.waterIntakePerDay || "your target"} today.`,
       frequency: "daily"
@@ -112,6 +123,7 @@ const buildSkincareTasks = (options, date) => {
 
   if (weeklyPillowcaseDue(options.pillowcaseFrequency, date)) {
     tasks.push({
+      taskKey: "skincare-pillowcase",
       title: "Change your pillowcase",
       description: `Matches your selected ${options.pillowcaseFrequency || "weekly"} pillowcase rhythm.`,
       frequency: "weekly"
@@ -129,21 +141,25 @@ const buildFocusTasks = (options) => {
 
   const tasks = [
     {
+      taskKey: "focus-sessions",
       title: `Complete ${sessions} focus session${sessions > 1 ? "s" : ""}`,
       description: `Use ${minutes}-minute sessions for ${options.focusObjective || "your main objective"}.`,
       frequency: "daily"
     },
     {
+      taskKey: "focus-phone-away",
       title: "Keep phone away during study",
       description: "Place it outside reach before the first session starts.",
       frequency: "daily"
     },
     {
+      taskKey: "focus-avoid-distraction",
       title: `Avoid ${distraction}`,
       description: `Protect your ${options.studyEnvironment || "study"} environment from this trigger.`,
       frequency: "daily"
     },
     {
+      taskKey: "focus-review",
       title: "Complete end-of-day review",
       description: "Write what worked, what slipped, and the first task for tomorrow.",
       frequency: "daily"
@@ -152,6 +168,7 @@ const buildFocusTasks = (options) => {
 
   if (yes(options.strictDailyTargets)) {
     tasks.push({
+      taskKey: "focus-strict-targets",
       title: "Write a strict target list",
       description: "Pick the exact chapters, tasks, or problems before starting.",
       frequency: "daily"

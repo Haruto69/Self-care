@@ -1,17 +1,22 @@
 import Goal from "../models/Goal.js";
 import Task from "../models/Task.js";
 import asyncHandler from "../utils/asyncHandler.js";
-import { getDateOnly } from "../utils/dateUtils.js";
 import { buildTasksForGoal } from "../utils/taskGenerator.js";
+import { validateDateOnly, validateObjectId, validatePositiveDays } from "../utils/validation.js";
 
 const taskPopulate = {
   path: "goalId",
   select: "goalType selectedOptions isActive"
 };
 
+const getActiveGoalIds = async (userId) => {
+  return Goal.find({ userId, isActive: true }).distinct("_id");
+};
+
 export const getTodayTasks = asyncHandler(async (req, res) => {
-  const today = getDateOnly(req.query.date || new Date());
-  const tasks = await Task.find({ userId: req.user._id, date: today })
+  const today = validateDateOnly(req.query.date, "date");
+  const activeGoalIds = await getActiveGoalIds(req.user._id);
+  const tasks = await Task.find({ userId: req.user._id, date: today, goalId: { $in: activeGoalIds } })
     .populate(taskPopulate)
     .sort({ createdAt: 1 });
 
@@ -19,51 +24,67 @@ export const getTodayTasks = asyncHandler(async (req, res) => {
 });
 
 export const generateTasks = asyncHandler(async (req, res) => {
-  const today = getDateOnly(req.body.date || new Date());
+  const today = validateDateOnly(req.body.date, "date");
   const goalQuery = { userId: req.user._id, isActive: true };
 
   if (req.body.goalId) {
+    validateObjectId(req.body.goalId, "goal id");
     goalQuery._id = req.body.goalId;
   }
 
   const goals = await Goal.find(goalQuery);
-  const createdTasks = [];
+  const operations = [];
 
   for (const goal of goals) {
     const generated = buildTasksForGoal(goal, today);
 
     for (const task of generated) {
-      const existingTask = await Task.findOne({
-        userId: req.user._id,
-        goalId: goal._id,
-        date: today,
-        title: task.title
-      });
-
-      if (!existingTask) {
-        createdTasks.push(
-          await Task.create({
-            ...task,
+      operations.push({
+        updateOne: {
+          filter: {
             userId: req.user._id,
             goalId: goal._id,
-            date: today
-          })
-        );
-      }
+            date: today,
+            taskKey: task.taskKey
+          },
+          update: {
+            $set: {
+              title: task.title,
+              description: task.description,
+              frequency: task.frequency
+            },
+            $setOnInsert: {
+              userId: req.user._id,
+              goalId: goal._id,
+              date: today,
+              taskKey: task.taskKey,
+              completed: false,
+              completedAt: null,
+              createdAt: new Date()
+            }
+          },
+          upsert: true
+        }
+      });
     }
   }
 
-  const tasks = await Task.find({ userId: req.user._id, date: today })
+  const result = operations.length ? await Task.bulkWrite(operations, { ordered: false }) : null;
+
+  const activeGoalIds = await getActiveGoalIds(req.user._id);
+  const tasks = await Task.find({ userId: req.user._id, date: today, goalId: { $in: activeGoalIds } })
     .populate(taskPopulate)
     .sort({ createdAt: 1 });
 
   res.status(201).json({
-    createdCount: createdTasks.length,
+    createdCount: result?.upsertedCount || 0,
     tasks
   });
 });
 
 export const toggleTask = asyncHandler(async (req, res) => {
+  validateObjectId(req.params.id, "task id");
+
   const task = await Task.findOne({ _id: req.params.id, userId: req.user._id });
 
   if (!task) {
@@ -80,8 +101,8 @@ export const toggleTask = asyncHandler(async (req, res) => {
 });
 
 export const getTaskHistory = asyncHandler(async (req, res) => {
-  const days = Math.min(Number.parseInt(req.query.days, 10) || 30, 90);
-  const end = getDateOnly(new Date());
+  const days = validatePositiveDays(req.query.days, 30, 90);
+  const end = validateDateOnly(new Date(), "date");
   const start = new Date(end);
   start.setDate(start.getDate() - days);
 

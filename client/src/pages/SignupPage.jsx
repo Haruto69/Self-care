@@ -54,7 +54,7 @@ function SignupPage() {
           <span>Password</span>
           <input
             type="password"
-            minLength="6"
+            minLength="8"
             value={form.password}
             onChange={(event) => setForm({ ...form, password: event.target.value })}
             required

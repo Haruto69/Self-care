@@ -2,6 +2,8 @@ import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import asyncHandler from "../utils/asyncHandler.js";
+import { badRequest } from "../utils/httpErrors.js";
+import { validateEmail, validatePasswordStrength } from "../utils/validation.js";
 
 const buildUserResponse = (user) => ({
   id: user._id,
@@ -23,17 +25,14 @@ const signToken = (userId) => {
 export const register = asyncHandler(async (req, res) => {
   const { name, email, password } = req.body;
 
-  if (!name || !email || !password) {
-    res.status(400);
-    throw new Error("Name, email, and password are required");
+  if (typeof name !== "string" || !name.trim()) {
+    throw badRequest("Name is required");
   }
 
-  if (password.length < 6) {
-    res.status(400);
-    throw new Error("Password must be at least 6 characters");
-  }
+  const normalizedEmail = validateEmail(email);
+  validatePasswordStrength(password);
 
-  const existingUser = await User.findOne({ email });
+  const existingUser = await User.findOne({ email: normalizedEmail });
 
   if (existingUser) {
     res.status(409);
@@ -41,7 +40,7 @@ export const register = asyncHandler(async (req, res) => {
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const user = await User.create({ name, email, passwordHash });
+  const user = await User.create({ name: name.trim(), email: normalizedEmail, passwordHash });
 
   res.status(201).json({
     token: signToken(user._id),
@@ -52,12 +51,12 @@ export const register = asyncHandler(async (req, res) => {
 export const login = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
-  if (!email || !password) {
-    res.status(400);
-    throw new Error("Email and password are required");
+  if (typeof password !== "string" || !password) {
+    throw badRequest("Email and password are required");
   }
 
-  const user = await User.findOne({ email });
+  const normalizedEmail = validateEmail(email);
+  const user = await User.findOne({ email: normalizedEmail });
   const passwordMatches = user ? await bcrypt.compare(password, user.passwordHash) : false;
 
   if (!user || !passwordMatches) {

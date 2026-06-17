@@ -7,6 +7,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
+  // TODO: Move JWT storage to httpOnly cookies before production.
   const token = localStorage.getItem(TOKEN_KEY);
 
   if (token) {

@@ -16,6 +16,10 @@ const taskSchema = new mongoose.Schema({
     required: true,
     trim: true
   },
+  taskKey: {
+    type: String,
+    trim: true
+  },
   description: {
     type: String,
     default: ""
@@ -44,6 +48,10 @@ const taskSchema = new mongoose.Schema({
 });
 
 taskSchema.index({ userId: 1, goalId: 1, date: 1 });
+taskSchema.index(
+  { userId: 1, goalId: 1, date: 1, taskKey: 1 },
+  { unique: true, partialFilterExpression: { taskKey: { $exists: true } } }
+);
 
 const Task = mongoose.model("Task", taskSchema);
 

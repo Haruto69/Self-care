@@ -1,5 +1,5 @@
 import { Save } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import LoadingSpinner from "../components/LoadingSpinner.jsx";
 import SetupForm from "../components/SetupForm.jsx";
@@ -14,12 +14,22 @@ const readPendingGoals = () => {
   }
 };
 
-const buildInitialAnswers = (goalTypes) => {
+const getReusableGoal = (goals, goalType) => {
+  return (
+    goals.find((goal) => goal.goalType === goalType && goal.isActive) ||
+    goals.find((goal) => goal.goalType === goalType)
+  );
+};
+
+const buildInitialAnswers = (goalTypes, goals = []) => {
   return goalTypes.reduce((result, goalType) => {
-    result[goalType] = (GOAL_QUESTIONS[goalType] || []).reduce((answers, question) => {
+    const defaults = (GOAL_QUESTIONS[goalType] || []).reduce((answers, question) => {
       answers[question.name] = question.type === "multi" ? [] : "";
       return answers;
     }, {});
+
+    const existingGoal = getReusableGoal(goals, goalType);
+    result[goalType] = { ...defaults, ...(existingGoal?.selectedOptions || {}) };
     return result;
   }, {});
 };
@@ -28,8 +38,26 @@ function GoalSetupPage() {
   const navigate = useNavigate();
   const selectedGoalTypes = useMemo(readPendingGoals, []);
   const [answers, setAnswers] = useState(() => buildInitialAnswers(selectedGoalTypes));
+  const [loadingGoals, setLoadingGoals] = useState(Boolean(selectedGoalTypes.length));
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!selectedGoalTypes.length) return;
+
+    const loadExistingGoals = async () => {
+      try {
+        const goals = await goalService.list();
+        setAnswers(buildInitialAnswers(selectedGoalTypes, goals));
+      } catch (apiError) {
+        setError(apiError.response?.data?.message || "Could not load your existing setup");
+      } finally {
+        setLoadingGoals(false);
+      }
+    };
+
+    loadExistingGoals();
+  }, [selectedGoalTypes]);
 
   const updateAnswers = (goalType, nextAnswers) => {
     setAnswers((current) => ({ ...current, [goalType]: nextAnswers }));
@@ -41,10 +69,11 @@ function GoalSetupPage() {
     setSaving(true);
 
     try {
-      const existingGoals = await goalService.list();
+      const latestGoals = await goalService.list();
+      const selectedSet = new Set(selectedGoalTypes);
 
       for (const goalType of selectedGoalTypes) {
-        const existing = existingGoals.find((goal) => goal.goalType === goalType && goal.isActive);
+        const existing = getReusableGoal(latestGoals, goalType);
         const payload = { goalType, selectedOptions: answers[goalType], isActive: true };
 
         if (existing) {
@@ -53,6 +82,14 @@ function GoalSetupPage() {
           await goalService.create(payload);
         }
       }
+
+      const goalsToDeactivate = latestGoals.filter(
+        (goal) => goal.isActive && !selectedSet.has(goal.goalType)
+      );
+
+      await Promise.all(
+        goalsToDeactivate.map((goal) => goalService.update(goal._id, { isActive: false }))
+      );
 
       await taskService.generate();
       localStorage.removeItem("pendingGoalTypes");
@@ -64,6 +101,7 @@ function GoalSetupPage() {
     }
   };
 
+  if (loadingGoals) return <LoadingSpinner label="Loading your setup" />;
   if (saving) return <LoadingSpinner label="Building today's tasks" />;
 
   if (!selectedGoalTypes.length) {
