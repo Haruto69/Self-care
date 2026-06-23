@@ -1,4 +1,4 @@
-import { numberFrom, yes } from "./ruleUtils.js";
+import { dateVariant, dayName, numberFrom, yes } from "./ruleUtils.js";
 
 export const exerciseRule = {
   id: "exercise",
@@ -57,6 +57,17 @@ export const exerciseRule = {
     const equipment = Array.isArray(options.homeEquipment)
       ? options.homeEquipment.filter((item) => item !== "None").join(", ")
       : "";
+    const workoutPrompt = dateVariant(date, [
+      "Start with an easy warm-up and write down one win after training.",
+      "Keep the first set controlled so the session starts cleanly.",
+      "Finish with a short cooldown to make tomorrow easier."
+    ]);
+    const recoveryPrompt = dateVariant(date, [
+      "Walk, stretch, or do light mobility",
+      "Take an easy walk and loosen the tightest area",
+      "Do gentle mobility and keep the streak alive"
+    ]);
+    const todayName = dayName(date);
 
     const tasks = [
       {
@@ -65,14 +76,14 @@ export const exerciseRule = {
         description: hasWorkoutToday
           ? `Train for ${options.timePerWorkout || "45 min"} at your ${
               yes(options.gymAccess) ? "gym" : equipment || "home setup"
-            }.`
-          : "Walk, stretch, or do light mobility so the habit stays alive.",
+            }. ${workoutPrompt}`
+          : `${recoveryPrompt} so the habit stays alive.`,
         frequency: "daily"
       },
       {
         taskKey: "exercise-water",
         title: "Drink your water target",
-        description: `Aim for ${waterTarget} today.`,
+        description: `Aim for ${waterTarget} this ${todayName}.`,
         frequency: "daily"
       },
       {

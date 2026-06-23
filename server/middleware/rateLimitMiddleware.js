@@ -5,6 +5,10 @@ export const createRateLimiter = ({
   max = 10,
   message = "Too many requests. Please try again later."
 } = {}) => {
+  if (process.env.NODE_ENV === "test") {
+    return (req, res, next) => next();
+  }
+
   const attempts = new Map();
 
   return (req, res, next) => {

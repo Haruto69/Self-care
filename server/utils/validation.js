@@ -20,8 +20,29 @@ export const validateObjectId = (value, label = "id") => {
   return value;
 };
 
+const DATE_ONLY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
+
 export const validateDateOnly = (value, label = "date") => {
-  const date = value === undefined || value === null ? new Date() : new Date(value);
+  let date;
+
+  if (value === undefined || value === null) {
+    date = new Date();
+  } else if (typeof value === "string") {
+    const dateOnlyMatch = value.match(DATE_ONLY_PATTERN);
+
+    if (dateOnlyMatch) {
+      const [, year, month, day] = dateOnlyMatch.map(Number);
+      date = new Date(year, month - 1, day);
+
+      if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+        throw badRequest(`${label} must be a valid date`);
+      }
+    } else {
+      date = new Date(value);
+    }
+  } else {
+    date = new Date(value);
+  }
 
   if (Number.isNaN(date.getTime())) {
     throw badRequest(`${label} must be a valid date`);

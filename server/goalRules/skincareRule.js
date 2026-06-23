@@ -1,4 +1,4 @@
-import { weeklyPillowcaseDue, yes } from "./ruleUtils.js";
+import { dateVariant, dayName, weeklyPillowcaseDue, yes } from "./ruleUtils.js";
 
 export const skincareRule = {
   id: "skincare",
@@ -28,6 +28,13 @@ export const skincareRule = {
     }
   ],
   generateTasks(options, date) {
+    const noPickingPrompt = dateVariant(date, [
+      "Keep hands away today and reset quickly if you catch yourself touching your face.",
+      "Use a quick pause before touching your face and choose something else for your hands.",
+      "Notice the urge early and let the spot heal without checking it repeatedly."
+    ]);
+    const todayName = dayName(date);
+
     const tasks = [
       {
         taskKey: "skincare-morning-wash",
@@ -62,13 +69,13 @@ export const skincareRule = {
       {
         taskKey: "skincare-no-picking",
         title: "Do not pick acne",
-        description: `Your current picking pattern is ${options.faceTouchFrequency || "Sometimes"}; keep hands away today.`,
+        description: `Your current picking pattern is ${options.faceTouchFrequency || "Sometimes"}. ${noPickingPrompt}`,
         frequency: "daily"
       },
       {
         taskKey: "skincare-water",
         title: "Drink skin-supportive water",
-        description: `Aim for ${options.waterIntakePerDay || "your target"} today.`,
+        description: `Aim for ${options.waterIntakePerDay || "your target"} this ${todayName}.`,
         frequency: "daily"
       }
     ];

@@ -25,13 +25,28 @@ const removeStaleGeneratedTasks = async ({ userId, goalId, date, taskKeys }) => 
       }
     : {};
 
-  await Task.deleteMany({
+  const result = await Task.deleteMany({
     userId,
     goalId,
     date,
     source: { $ne: "manual" },
     ...staleKeyFilter
   });
+
+  return result.deletedCount || 0;
+};
+
+const removeGeneratedTasksForInactiveGoals = async ({ userId, date, activeGoalIds }) => {
+  const goalFilter = activeGoalIds.length ? { goalId: { $nin: activeGoalIds } } : {};
+
+  const result = await Task.deleteMany({
+    userId,
+    date,
+    source: { $ne: "manual" },
+    ...goalFilter
+  });
+
+  return result.deletedCount || 0;
 };
 
 export const getTodayTasks = asyncHandler(async (req, res) => {
@@ -47,27 +62,40 @@ export const getTodayTasks = asyncHandler(async (req, res) => {
 export const generateTasks = asyncHandler(async (req, res) => {
   const today = validateDateOnly(req.body.date, "date");
   const goalQuery = { userId: req.user._id, isActive: true };
+  let requestedGoalId = null;
 
   if (req.body.goalId) {
-    validateObjectId(req.body.goalId, "goal id");
-    goalQuery._id = req.body.goalId;
+    requestedGoalId = validateObjectId(req.body.goalId, "goal id");
+    goalQuery._id = requestedGoalId;
   }
 
-  const goals = await Goal.find(goalQuery);
+  const [goals, activeGoalIds] = await Promise.all([Goal.find(goalQuery), getActiveGoalIds(req.user._id)]);
+  const operationGoalIds = goals.map((goal) => goal._id);
   const operations = [];
+  let deletedStaleCount = 0;
+  let deletedInactiveCount = 0;
+  let deletedDuplicateCount = 0;
+
+  if (!requestedGoalId) {
+    deletedInactiveCount = await removeGeneratedTasksForInactiveGoals({
+      userId: req.user._id,
+      date: today,
+      activeGoalIds
+    });
+  }
 
   for (const goal of goals) {
     const generated = buildTasksForGoal(goal, today);
     const generatedTaskKeys = generated.map((task) => task.taskKey);
 
-    await removeStaleGeneratedTasks({
+    deletedStaleCount += await removeStaleGeneratedTasks({
       userId: req.user._id,
       goalId: goal._id,
       date: today,
       taskKeys: generatedTaskKeys
     });
 
-    await cleanupDuplicateGeneratedTasks({
+    deletedDuplicateCount += await cleanupDuplicateGeneratedTasks({
       userId: req.user._id,
       date: today,
       goalIds: [goal._id]
@@ -80,7 +108,8 @@ export const generateTasks = asyncHandler(async (req, res) => {
             userId: req.user._id,
             goalId: goal._id,
             date: today,
-            taskKey: task.taskKey
+            taskKey: task.taskKey,
+            source: { $ne: "manual" }
           },
           update: {
             $set: {
@@ -107,13 +136,32 @@ export const generateTasks = asyncHandler(async (req, res) => {
 
   const result = operations.length ? await Task.bulkWrite(operations, { ordered: false }) : null;
 
-  const activeGoalIds = await getActiveGoalIds(req.user._id);
+  if (operationGoalIds.length) {
+    deletedDuplicateCount += await cleanupDuplicateGeneratedTasks({
+      userId: req.user._id,
+      date: today,
+      goalIds: operationGoalIds
+    });
+  }
+
   const tasks = await Task.find({ userId: req.user._id, date: today, goalId: { $in: activeGoalIds } })
     .populate(taskPopulate)
     .sort({ createdAt: 1 });
 
+  const createdCount = result?.upsertedCount || 0;
+  const updatedCount = result?.modifiedCount || 0;
+  const deletedCount = deletedStaleCount + deletedInactiveCount + deletedDuplicateCount;
+  const changed = createdCount + updatedCount + deletedCount > 0;
+
   res.status(201).json({
-    createdCount: result?.upsertedCount || 0,
+    message: changed ? "Tasks refreshed" : "Tasks are already up to date",
+    changed,
+    createdCount,
+    updatedCount,
+    deletedCount,
+    deletedStaleCount,
+    deletedInactiveCount,
+    deletedDuplicateCount,
     tasks
   });
 });

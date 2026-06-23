@@ -6,11 +6,17 @@ const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY));
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => Boolean(localStorage.getItem(TOKEN_KEY)));
 
   useEffect(() => {
     const loadUser = async () => {
       if (!token) {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
+      if (user) {
         setLoading(false);
         return;
       }
@@ -28,7 +34,7 @@ export function AuthProvider({ children }) {
     };
 
     loadUser();
-  }, [token]);
+  }, [token, user]);
 
   const saveSession = (data) => {
     localStorage.setItem(TOKEN_KEY, data.token);

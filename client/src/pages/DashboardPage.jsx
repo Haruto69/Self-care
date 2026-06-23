@@ -12,6 +12,7 @@ function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [togglingIds, setTogglingIds] = useState([]);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   const completion = getCompletionRate(tasks);
 
@@ -19,6 +20,7 @@ function DashboardPage() {
 
   const loadTasks = async () => {
     setError("");
+    setNotice("");
     setLoading(true);
 
     try {
@@ -47,6 +49,7 @@ function DashboardPage() {
     if (!previousTask || togglingIds.includes(id)) return;
 
     setError("");
+    setNotice("");
     setTogglingIds((current) => [...current, id]);
     setTasks((current) =>
       current.map((task) =>
@@ -74,11 +77,14 @@ function DashboardPage() {
   const regenerateTasks = async () => {
     setRefreshing(true);
     setError("");
+    setNotice("");
 
     try {
       const generated = await taskService.generate();
       setTasks(generated.tasks);
+      setNotice(generated.message || (generated.changed ? "Tasks refreshed" : "Tasks are already up to date"));
     } catch (apiError) {
+      setNotice("");
       setError(apiError.response?.data?.message || "Could not refresh today's tasks. Please try again.");
     } finally {
       setRefreshing(false);
@@ -105,7 +111,12 @@ function DashboardPage() {
         </div>
       </div>
 
-      {error && <p className="alert">{error}</p>}
+      {error && <p className="alert" role="alert">{error}</p>}
+      {notice && !error && (
+        <p className="notice" role="status" aria-live="polite">
+          {notice}
+        </p>
+      )}
 
       <div className="action-row">
         <button className="button secondary" onClick={regenerateTasks} disabled={refreshing}>

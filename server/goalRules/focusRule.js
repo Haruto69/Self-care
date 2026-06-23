@@ -1,4 +1,4 @@
-import { numberFrom, sessionMinutes, yes } from "./ruleUtils.js";
+import { dateVariant, dayName, numberFrom, sessionMinutes, yes } from "./ruleUtils.js";
 
 export const focusRule = {
   id: "focus",
@@ -31,23 +31,34 @@ export const focusRule = {
     },
     { name: "strictDailyTargets", type: "select", required: true, options: ["Yes", "No"] }
   ],
-  generateTasks(options) {
+  generateTasks(options, date = new Date()) {
     const targetHours = numberFrom(options.targetFocusHours, 2);
     const minutes = sessionMinutes(options.preferredSessionLength);
     const sessions = Math.max(1, Math.ceil((targetHours * 60) / minutes));
     const distraction = options.mainDistraction || "main distraction";
+    const todayName = dayName(date);
+    const phonePrompt = dateVariant(date, [
+      "Place it outside reach before the first session starts.",
+      "Put it in another room until the next planned break.",
+      "Turn on silent mode before opening the first task."
+    ]);
+    const reviewPrompt = dateVariant(date, [
+      "Write what worked, what slipped, and the first task for tomorrow.",
+      "Capture the best session, the biggest blocker, and tomorrow's first move.",
+      "Note one improvement you can make before the next session."
+    ]);
 
     const tasks = [
       {
         taskKey: "focus-sessions",
         title: `Complete ${sessions} focus session${sessions > 1 ? "s" : ""}`,
-        description: `Use ${minutes}-minute sessions for ${options.focusObjective || "your main objective"}.`,
+        description: `Use ${minutes}-minute sessions for ${options.focusObjective || "your main objective"} this ${todayName}.`,
         frequency: "daily"
       },
       {
         taskKey: "focus-phone-away",
         title: "Keep phone away during study",
-        description: "Place it outside reach before the first session starts.",
+        description: phonePrompt,
         frequency: "daily"
       },
       {
@@ -59,7 +70,7 @@ export const focusRule = {
       {
         taskKey: "focus-review",
         title: "Complete end-of-day review",
-        description: "Write what worked, what slipped, and the first task for tomorrow.",
+        description: reviewPrompt,
         frequency: "daily"
       }
     ];

@@ -15,6 +15,7 @@ vi.mock("../services/api.js", () => ({
 
 const task = {
   _id: "task-1",
+  taskKey: "focus-sessions",
   title: "Complete focus sessions",
   description: "Use 25-minute sessions.",
   frequency: "daily",
@@ -23,6 +24,11 @@ const task = {
     _id: "goal-1",
     goalType: "focus"
   }
+};
+
+const refreshedTask = {
+  ...task,
+  description: "Use 25-minute sessions this Tuesday."
 };
 
 const renderDashboard = () => {
@@ -48,10 +54,10 @@ describe("DashboardPage", () => {
     expect(screen.queryByText("Loading today's plan")).not.toBeInTheDocument();
   });
 
-  it("shows refresh loading and error states", async () => {
-    let rejectGenerate;
-    const generatePromise = new Promise((resolve, reject) => {
-      rejectGenerate = reject;
+  it("shows refresh loading state", async () => {
+    let resolveGenerate;
+    const generatePromise = new Promise((resolve) => {
+      resolveGenerate = resolve;
     });
 
     taskService.today.mockResolvedValueOnce([task]);
@@ -61,14 +67,60 @@ describe("DashboardPage", () => {
 
     await screen.findByText("Complete focus sessions");
 
-    const refreshButton = screen.getByRole("button", { name: /refresh tasks/i });
-    await userEvent.click(refreshButton);
+    await userEvent.click(screen.getByRole("button", { name: /refresh tasks/i }));
 
     expect(screen.getByRole("button", { name: /refreshing/i })).toBeDisabled();
 
-    rejectGenerate(new Error("Refresh failed"));
+    resolveGenerate({ tasks: [refreshedTask], changed: true, message: "Tasks refreshed" });
 
-    expect(await screen.findByText("Could not refresh today's tasks. Please try again.")).toBeInTheDocument();
+    expect(await screen.findByText("Tasks refreshed")).toBeInTheDocument();
+  });
+
+  it("shows a refresh success message", async () => {
+    taskService.today.mockResolvedValueOnce([task]);
+    taskService.generate.mockResolvedValueOnce({
+      tasks: [refreshedTask],
+      changed: true,
+      message: "Tasks refreshed"
+    });
+
+    renderDashboard();
+
+    await screen.findByText("Complete focus sessions");
+    await userEvent.click(screen.getByRole("button", { name: /refresh tasks/i }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("Tasks refreshed");
+    expect(screen.getByText("Use 25-minute sessions this Tuesday.")).toBeInTheDocument();
+  });
+
+  it("shows an already up to date message when refresh returns no changes", async () => {
+    taskService.today.mockResolvedValueOnce([task]);
+    taskService.generate.mockResolvedValueOnce({
+      tasks: [task],
+      changed: false,
+      message: "Tasks are already up to date"
+    });
+
+    renderDashboard();
+
+    await screen.findByText("Complete focus sessions");
+    await userEvent.click(screen.getByRole("button", { name: /refresh tasks/i }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("Tasks are already up to date");
+  });
+
+  it("shows a refresh error state", async () => {
+    taskService.today.mockResolvedValueOnce([task]);
+    taskService.generate.mockRejectedValueOnce(new Error("Refresh failed"));
+
+    renderDashboard();
+
+    await screen.findByText("Complete focus sessions");
+    await userEvent.click(screen.getByRole("button", { name: /refresh tasks/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Could not refresh today's tasks. Please try again."
+    );
     expect(screen.getByRole("button", { name: /refresh tasks/i })).not.toBeDisabled();
   });
 
