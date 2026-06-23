@@ -21,6 +21,12 @@ const pointSummary = {
   totalPoints: 24,
   lifetimePoints: 24,
   currentLevel: 1,
+  currentLevelName: "Level 1",
+  currentLevelThreshold: 0,
+  nextLevel: 2,
+  nextLevelThreshold: 100,
+  pointsToNextLevel: 76,
+  levelProgressPercent: 24,
   pointsEarnedToday: 12,
   lastPointAwardDate: "2026-06-23T00:00:00.000Z"
 };
@@ -29,7 +35,32 @@ const updatedPointSummary = {
   ...pointSummary,
   totalPoints: 36,
   lifetimePoints: 36,
-  pointsEarnedToday: 24
+  pointsEarnedToday: 24,
+  pointsToNextLevel: 64,
+  levelProgressPercent: 36
+};
+
+const nearLevelPointSummary = {
+  ...pointSummary,
+  totalPoints: 96,
+  lifetimePoints: 96,
+  pointsEarnedToday: 0,
+  pointsToNextLevel: 4,
+  levelProgressPercent: 96
+};
+
+const levelUpPointSummary = {
+  totalPoints: 108,
+  lifetimePoints: 108,
+  currentLevel: 2,
+  currentLevelName: "Level 2",
+  currentLevelThreshold: 100,
+  nextLevel: 3,
+  nextLevelThreshold: 250,
+  pointsToNextLevel: 142,
+  levelProgressPercent: 5,
+  pointsEarnedToday: 12,
+  lastPointAwardDate: "2026-06-23T00:00:00.000Z"
 };
 
 const task = {
@@ -90,8 +121,21 @@ describe("DashboardPage", () => {
     expect(pointService.summary).toHaveBeenCalledTimes(1);
     expect(within(pointsCard).getByText("Total Points")).toBeInTheDocument();
     expect(within(pointsCard).getByText("Points Earned Today")).toBeInTheDocument();
+    expect(within(pointsCard).getByText("Current Level")).toBeInTheDocument();
+    expect(within(pointsCard).getByText("Level 1")).toBeInTheDocument();
+    expect(within(pointsCard).getByText("76 points to Level 2")).toBeInTheDocument();
     expect(within(pointsCard).getByText("24")).toBeInTheDocument();
     expect(within(pointsCard).getByText("12")).toBeInTheDocument();
+  });
+
+  it("renders level progress in the points card", async () => {
+    taskService.today.mockResolvedValueOnce([task]);
+
+    renderDashboard();
+
+    const progress = await screen.findByRole("progressbar", { name: /level progress/i });
+
+    expect(progress).toHaveAttribute("aria-valuenow", "24");
   });
 
   it("shows an error state if points summary fails", async () => {
@@ -110,7 +154,8 @@ describe("DashboardPage", () => {
     taskService.toggle.mockResolvedValueOnce({
       task: completedTask,
       pointsAwarded: 12,
-      pointsSummary: updatedPointSummary
+      pointsSummary: updatedPointSummary,
+      levelUp: null
     });
 
     renderDashboard();
@@ -126,6 +171,33 @@ describe("DashboardPage", () => {
     expect(screen.queryByText("Personal goal")).not.toBeInTheDocument();
     expect(within(pointsCard).getByText("36")).toBeInTheDocument();
     expect(within(pointsCard).getByText("24")).toBeInTheDocument();
+  });
+
+  it("shows a level-up message after completing a task", async () => {
+    pointService.summary.mockResolvedValueOnce(nearLevelPointSummary);
+    taskService.today.mockResolvedValueOnce([task]);
+    taskService.toggle.mockResolvedValueOnce({
+      task: completedTask,
+      pointsAwarded: 12,
+      pointsSummary: levelUpPointSummary,
+      levelUp: {
+        previousLevel: 1,
+        currentLevel: 2,
+        currentLevelName: "Level 2"
+      }
+    });
+
+    renderDashboard();
+
+    await screen.findByText("Complete focus sessions");
+    await userEvent.click(screen.getByRole("button", { name: /mark task complete/i }));
+
+    const pointsCard = await screen.findByLabelText("Points summary");
+
+    expect(await screen.findByText("Level up! You reached Level 2.")).toBeInTheDocument();
+    expect(within(pointsCard).getByText("Level 2")).toBeInTheDocument();
+    expect(within(pointsCard).getByText("142 points to Level 3")).toBeInTheDocument();
+    expect(screen.getByRole("progressbar", { name: /level progress/i })).toHaveAttribute("aria-valuenow", "5");
   });
 
   it("supports legacy plain task toggle responses", async () => {

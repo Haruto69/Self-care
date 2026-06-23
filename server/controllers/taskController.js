@@ -187,13 +187,15 @@ export const toggleTask = asyncHandler(async (req, res) => {
     : {
         pointsAwarded: 0,
         pointsSummary: await getPointsSummary(req.user._id),
-        transaction: null
+        transaction: null,
+        levelUp: null
       };
 
   res.json({
     task,
     pointsAwarded: pointResult.pointsAwarded,
-    pointsSummary: pointResult.pointsSummary
+    pointsSummary: pointResult.pointsSummary,
+    levelUp: pointResult.levelUp
   });
 });
 

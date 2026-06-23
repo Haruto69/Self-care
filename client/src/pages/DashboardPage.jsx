@@ -10,6 +10,12 @@ const DEFAULT_POINTS_SUMMARY = {
   totalPoints: 0,
   lifetimePoints: 0,
   currentLevel: 1,
+  currentLevelName: "Level 1",
+  currentLevelThreshold: 0,
+  nextLevel: 2,
+  nextLevelThreshold: 100,
+  pointsToNextLevel: 100,
+  levelProgressPercent: 0,
   pointsEarnedToday: 0,
   lastPointAwardDate: null
 };
@@ -52,7 +58,7 @@ function DashboardPage() {
   const loadPointsSummary = async () => {
     try {
       const summary = await pointService.summary();
-      setPointsSummary(summary);
+      setPointsSummary({ ...DEFAULT_POINTS_SUMMARY, ...summary });
       setPointsError("");
     } catch (apiError) {
       setPointsSummary(DEFAULT_POINTS_SUMMARY);
@@ -118,11 +124,13 @@ function DashboardPage() {
       setTasks((current) => current.map((task) => (task._id === id ? updatedTask : task)));
 
       if (result.pointsSummary) {
-        setPointsSummary(result.pointsSummary);
+        setPointsSummary({ ...DEFAULT_POINTS_SUMMARY, ...result.pointsSummary });
         setPointsError("");
       }
 
-      if (result.pointsAwarded > 0) {
+      if (result.levelUp) {
+        setNotice(`Level up! You reached Level ${result.levelUp.currentLevel}.`);
+      } else if (result.pointsAwarded > 0) {
         setNotice(`+${result.pointsAwarded} points earned`);
       }
     } catch (apiError) {
@@ -183,6 +191,25 @@ function DashboardPage() {
                   <span>Points Earned Today</span>
                   <strong>{pointsSummary.pointsEarnedToday}</strong>
                 </div>
+                <div className="level-row">
+                  <span>Current Level</span>
+                  <strong>{pointsSummary.currentLevelName || `Level ${pointsSummary.currentLevel}`}</strong>
+                </div>
+                <div
+                  className="level-progress-track"
+                  aria-label="Level progress"
+                  aria-valuemin="0"
+                  aria-valuemax="100"
+                  aria-valuenow={pointsSummary.levelProgressPercent}
+                  role="progressbar"
+                >
+                  <span style={{ width: `${pointsSummary.levelProgressPercent}%` }} />
+                </div>
+                <p className="points-next">
+                  {pointsSummary.nextLevel
+                    ? `${pointsSummary.pointsToNextLevel} points to Level ${pointsSummary.nextLevel}`
+                    : "Max level reached"}
+                </p>
               </>
             )}
           </div>

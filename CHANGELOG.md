@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## V1.0.3 - 2026-06-23
+
+### Main Features
+
+- Added a level system powered by lifetime points.
+- Added configurable level thresholds from Level 1 through Level 10.
+- Added level progress fields to the point summary API.
+- Updated the dashboard Points Card with current level, next-level progress, and points needed for the next level.
+- Added simple level-up feedback after task completion crosses a level threshold.
+
+### Technical Improvements
+
+- Added a dedicated level service so progression logic stays separate from task, point, and UI logic.
+- Recalculate and save user `currentLevel` whenever points are awarded.
+- Added backend tests for level calculations, defaults, summary fields, saved level updates, and level-up detection.
+- Added frontend tests for level display, progress rendering, and level-up messaging.
+
 ## V1.0.2 - 2026-06-23
 
 ### Main Features

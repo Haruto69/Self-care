@@ -3,6 +3,7 @@ import { MongoMemoryServer } from "mongodb-memory-server";
 import request from "supertest";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import app from "../app.js";
+import { calculateLevelProgress } from "../services/levelService.js";
 import Goal from "../models/Goal.js";
 import Task from "../models/Task.js";
 import PointTransaction from "../models/PointTransaction.js";
@@ -347,6 +348,41 @@ describe("task generation", () => {
 });
 
 
+
+describe("level service", () => {
+  it("calculates level progress from lifetime points", () => {
+    expect(calculateLevelProgress(0)).toMatchObject({
+      currentLevel: 1,
+      currentLevelThreshold: 0,
+      nextLevel: 2,
+      nextLevelThreshold: 100,
+      pointsToNextLevel: 100,
+      levelProgressPercent: 0
+    });
+    expect(calculateLevelProgress(100)).toMatchObject({
+      currentLevel: 2,
+      currentLevelThreshold: 100,
+      nextLevel: 3,
+      pointsToNextLevel: 150,
+      levelProgressPercent: 0
+    });
+    expect(calculateLevelProgress(175)).toMatchObject({
+      currentLevel: 2,
+      currentLevelThreshold: 100,
+      nextLevel: 3,
+      nextLevelThreshold: 250,
+      pointsToNextLevel: 75,
+      levelProgressPercent: 50
+    });
+    expect(calculateLevelProgress(5000)).toMatchObject({
+      currentLevel: 10,
+      nextLevel: null,
+      nextLevelThreshold: null,
+      pointsToNextLevel: 0,
+      levelProgressPercent: 100
+    });
+  });
+});
 describe("points system", () => {
   it("awards points on first task completion", async () => {
     const token = await registerUser("points-award@example.com");
@@ -470,6 +506,88 @@ describe("points system", () => {
     expect(history.body[0].createdAt).toBeTruthy();
   });
 
+
+  it("updates saved currentLevel and reports a level-up after task completion", async () => {
+    const token = await registerUser("level-up@example.com");
+    await User.updateOne(
+      { email: "level-up@example.com" },
+      {
+        $set: {
+          "pointsProfile.totalPoints": 96,
+          "pointsProfile.lifetimePoints": 96,
+          "pointsProfile.currentLevel": 1,
+          "pointsProfile.pointsEarnedToday": 0,
+          "pointsProfile.lastPointAwardDate": null
+        }
+      }
+    );
+    await createFocusGoal(token);
+
+    const generated = await request(app)
+      .post("/api/tasks/generate")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ date: "2026-06-17" });
+    const task = generated.body.tasks.find((item) => item.taskKey === "focus-sessions");
+
+    const response = await request(app)
+      .put(`/api/tasks/${task._id}/toggle`)
+      .set("Authorization", `Bearer ${token}`);
+    const user = await User.findOne({ email: "level-up@example.com" }).lean();
+
+    expect(response.status).toBe(200);
+    expect(response.body.pointsAwarded).toBe(12);
+    expect(response.body.levelUp).toMatchObject({
+      previousLevel: 1,
+      currentLevel: 2,
+      currentLevelName: "Level 2"
+    });
+    expect(response.body.pointsSummary).toMatchObject({
+      totalPoints: 108,
+      lifetimePoints: 108,
+      currentLevel: 2,
+      currentLevelName: "Level 2",
+      currentLevelThreshold: 100,
+      nextLevel: 3,
+      nextLevelThreshold: 250,
+      pointsToNextLevel: 142,
+      levelProgressPercent: 5
+    });
+    expect(user.pointsProfile.currentLevel).toBe(2);
+  });
+
+  it("includes level fields in the point summary response", async () => {
+    const token = await registerUser("level-summary@example.com");
+    await User.updateOne(
+      { email: "level-summary@example.com" },
+      {
+        $set: {
+          "pointsProfile.totalPoints": 175,
+          "pointsProfile.lifetimePoints": 175,
+          "pointsProfile.pointsEarnedToday": 0
+        },
+        $unset: {
+          "pointsProfile.currentLevel": ""
+        }
+      }
+    );
+
+    const summary = await request(app)
+      .get("/api/points/summary")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(summary.status).toBe(200);
+    expect(summary.body).toMatchObject({
+      totalPoints: 175,
+      lifetimePoints: 175,
+      currentLevel: 2,
+      currentLevelName: "Level 2",
+      currentLevelThreshold: 100,
+      nextLevel: 3,
+      nextLevelThreshold: 250,
+      pointsToNextLevel: 75,
+      levelProgressPercent: 50
+    });
+  });
   it("defaults existing users with no points profile to zero points", async () => {
     const token = await registerUser("old-user@example.com");
     await User.updateOne({ email: "old-user@example.com" }, { $unset: { pointsProfile: "" } });
@@ -483,6 +601,12 @@ describe("points system", () => {
       totalPoints: 0,
       lifetimePoints: 0,
       currentLevel: 1,
+      currentLevelName: "Level 1",
+      currentLevelThreshold: 0,
+      nextLevel: 2,
+      nextLevelThreshold: 100,
+      pointsToNextLevel: 100,
+      levelProgressPercent: 0,
       pointsEarnedToday: 0,
       lastPointAwardDate: null
     });

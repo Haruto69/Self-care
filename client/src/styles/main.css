@@ -575,6 +575,43 @@ a {
 .points-line strong {
   font-size: 1.8rem;
 }
+.level-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 4px;
+  font-weight: 900;
+}
+
+.level-row span,
+.points-next {
+  color: var(--muted);
+}
+
+.level-row strong {
+  font-size: 1.15rem;
+}
+
+.level-progress-track {
+  width: 100%;
+  height: 9px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #e6ebe7;
+}
+
+.level-progress-track span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--teal);
+}
+
+.points-next {
+  margin: 0;
+  font-weight: 800;
+}
 
 .progress-track {
   width: 100%;
