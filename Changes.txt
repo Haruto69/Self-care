@@ -1,0 +1,4 @@
+- Add a feature to delete account
+- Add a feature to see password using an eye icon which opens when password is visible and shuts when password is in dots(not visible)
+- Add more personalized tasks depending on the user and ask for more input variables as well. 
+- Add a chatbot using a free API call with context to answer small doubts by the user.
