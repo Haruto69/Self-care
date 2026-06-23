@@ -5,6 +5,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import app from "../app.js";
 import Goal from "../models/Goal.js";
 import Task from "../models/Task.js";
+import PointTransaction from "../models/PointTransaction.js";
 import User from "../models/User.js";
 
 process.env.JWT_SECRET = "test_secret_for_api_tests";
@@ -71,7 +72,7 @@ const createExerciseGoal = async (token, selectedOptions = exerciseOptions) => {
 beforeAll(async () => {
   mongoServer = await MongoMemoryServer.create();
   await mongoose.connect(mongoServer.getUri());
-  await Promise.all([Task.syncIndexes(), User.syncIndexes()]);
+  await Promise.all([Task.syncIndexes(), PointTransaction.syncIndexes(), User.syncIndexes()]);
 });
 
 afterEach(async () => {
@@ -345,6 +346,148 @@ describe("task generation", () => {
   });
 });
 
+
+describe("points system", () => {
+  it("awards points on first task completion", async () => {
+    const token = await registerUser("points-award@example.com");
+    const goal = await createFocusGoal(token);
+
+    const generated = await request(app)
+      .post("/api/tasks/generate")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ date: "2026-06-17" });
+    const task = generated.body.tasks.find((item) => item.taskKey === "focus-sessions");
+
+    const response = await request(app)
+      .put(`/api/tasks/${task._id}/toggle`)
+      .set("Authorization", `Bearer ${token}`);
+
+    const transaction = await PointTransaction.findOne({ taskId: task._id });
+
+    expect(response.status).toBe(200);
+    expect(response.body.task.completed).toBe(true);
+    expect(response.body.pointsAwarded).toBe(12);
+    expect(response.body.pointsSummary).toMatchObject({
+      totalPoints: 12,
+      lifetimePoints: 12,
+      currentLevel: 1,
+      pointsEarnedToday: 12
+    });
+    expect(transaction).toBeTruthy();
+    expect(String(transaction.userId)).toBe(goal.userId);
+    expect(String(transaction.goalId)).toBe(goal._id);
+    expect(transaction.sourceGoal).toBe("focus");
+    expect(transaction.pointsAwarded).toBe(12);
+    expect(transaction.reason).toBe("task_completion");
+  });
+
+  it("does not award duplicate points on repeated toggles", async () => {
+    const token = await registerUser("points-duplicate@example.com");
+    await createFocusGoal(token);
+
+    const generated = await request(app)
+      .post("/api/tasks/generate")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ date: "2026-06-17" });
+    const task = generated.body.tasks.find((item) => item.taskKey === "focus-sessions");
+
+    const first = await request(app)
+      .put(`/api/tasks/${task._id}/toggle`)
+      .set("Authorization", `Bearer ${token}`);
+    const unchecked = await request(app)
+      .put(`/api/tasks/${task._id}/toggle`)
+      .set("Authorization", `Bearer ${token}`);
+    const rechecked = await request(app)
+      .put(`/api/tasks/${task._id}/toggle`)
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(first.body.pointsAwarded).toBe(12);
+    expect(unchecked.body.pointsAwarded).toBe(0);
+    expect(rechecked.body.pointsAwarded).toBe(0);
+    expect(rechecked.body.pointsSummary.totalPoints).toBe(12);
+    expect(rechecked.body.pointsSummary.lifetimePoints).toBe(12);
+    expect(await PointTransaction.countDocuments({ taskId: task._id })).toBe(1);
+  });
+
+  it("calculates point summary across completed tasks", async () => {
+    const token = await registerUser("points-summary@example.com");
+    await createFocusGoal(token);
+    await createExerciseGoal(token);
+
+    const generated = await request(app)
+      .post("/api/tasks/generate")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ date: "2026-06-22" });
+    const focusTask = generated.body.tasks.find((item) => item.taskKey === "focus-sessions");
+    const weeklyExerciseTask = generated.body.tasks.find((item) => item.taskKey === "exercise-weight-log");
+
+    await request(app)
+      .put(`/api/tasks/${focusTask._id}/toggle`)
+      .set("Authorization", `Bearer ${token}`);
+    await request(app)
+      .put(`/api/tasks/${weeklyExerciseTask._id}/toggle`)
+      .set("Authorization", `Bearer ${token}`);
+
+    const summary = await request(app)
+      .get("/api/points/summary")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(summary.status).toBe(200);
+    expect(summary.body).toMatchObject({
+      totalPoints: 37,
+      lifetimePoints: 37,
+      currentLevel: 1,
+      pointsEarnedToday: 37
+    });
+  });
+
+  it("returns point transaction history", async () => {
+    const token = await registerUser("points-history@example.com");
+    await createFocusGoal(token);
+
+    const generated = await request(app)
+      .post("/api/tasks/generate")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ date: "2026-06-17" });
+    const task = generated.body.tasks.find((item) => item.taskKey === "focus-sessions");
+
+    await request(app)
+      .put(`/api/tasks/${task._id}/toggle`)
+      .set("Authorization", `Bearer ${token}`);
+
+    const history = await request(app)
+      .get("/api/points/history")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(history.status).toBe(200);
+    expect(history.body).toHaveLength(1);
+    expect(history.body[0]).toMatchObject({
+      taskId: task._id,
+      sourceGoal: "focus",
+      pointsAwarded: 12,
+      reason: "task_completion"
+    });
+    expect(history.body[0].createdAt).toBeTruthy();
+  });
+
+  it("defaults existing users with no points profile to zero points", async () => {
+    const token = await registerUser("old-user@example.com");
+    await User.updateOne({ email: "old-user@example.com" }, { $unset: { pointsProfile: "" } });
+
+    const summary = await request(app)
+      .get("/api/points/summary")
+      .set("Authorization", `Bearer ${token}`);
+
+    expect(summary.status).toBe(200);
+    expect(summary.body).toMatchObject({
+      totalPoints: 0,
+      lifetimePoints: 0,
+      currentLevel: 1,
+      pointsEarnedToday: 0,
+      lastPointAwardDate: null
+    });
+  });
+});
 describe("invalid ids and dates", () => {
   it("returns 400 for invalid ObjectIds", async () => {
     const token = await registerUser("bad-id@example.com");

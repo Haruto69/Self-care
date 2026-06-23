@@ -1,5 +1,35 @@
 import mongoose from "mongoose";
 
+const pointsProfileSchema = new mongoose.Schema(
+  {
+    totalPoints: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    lifetimePoints: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    currentLevel: {
+      type: Number,
+      default: 1,
+      min: 1
+    },
+    pointsEarnedToday: {
+      type: Number,
+      default: 0,
+      min: 0
+    },
+    lastPointAwardDate: {
+      type: Date,
+      default: null
+    }
+  },
+  { _id: false }
+);
+
 const userSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -16,6 +46,10 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true,
     select: false
+  },
+  pointsProfile: {
+    type: pointsProfileSchema,
+    default: () => ({})
   },
   createdAt: {
     type: Date,

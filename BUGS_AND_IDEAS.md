@@ -35,3 +35,8 @@ Use this file to collect future V2 planning items without expanding the V1 scope
 - Keep V2 calm and self-care focused, not overloaded with analytics.
 - Avoid presenting generated tasks as medical, fitness, or dermatology advice.
 - Keep new goal templates beginner-friendly and easy to edit.
+## V1.0.2 Notes
+
+- Points are now the primary progression currency for task completion.
+- Keep level thresholds, cheat rewards, achievements, and AI recommendations layered on top of point transactions rather than recalculating directly from tasks.
+- Future reward rules should consume the transaction log so spending, audits, and eligibility checks stay consistent.

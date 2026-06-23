@@ -1,17 +1,36 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import DashboardPage from "./DashboardPage.jsx";
-import { taskService } from "../services/api.js";
+import { pointService, taskService } from "../services/api.js";
 
 vi.mock("../services/api.js", () => ({
+  pointService: {
+    summary: vi.fn(),
+    history: vi.fn()
+  },
   taskService: {
     today: vi.fn(),
     generate: vi.fn(),
     toggle: vi.fn()
   }
 }));
+
+const pointSummary = {
+  totalPoints: 24,
+  lifetimePoints: 24,
+  currentLevel: 1,
+  pointsEarnedToday: 12,
+  lastPointAwardDate: "2026-06-23T00:00:00.000Z"
+};
+
+const updatedPointSummary = {
+  ...pointSummary,
+  totalPoints: 36,
+  lifetimePoints: 36,
+  pointsEarnedToday: 24
+};
 
 const task = {
   _id: "task-1",
@@ -24,6 +43,12 @@ const task = {
     _id: "goal-1",
     goalType: "focus"
   }
+};
+
+const completedTask = {
+  ...task,
+  completed: true,
+  completedAt: "2026-06-23T09:00:00.000Z"
 };
 
 const refreshedTask = {
@@ -42,6 +67,7 @@ const renderDashboard = () => {
 describe("DashboardPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    pointService.summary.mockResolvedValue(pointSummary);
   });
 
   it("shows loading and then an error when tasks cannot load", async () => {
@@ -52,6 +78,50 @@ describe("DashboardPage", () => {
     expect(screen.getByText("Loading today's plan")).toBeInTheDocument();
     expect(await screen.findByText("Could not load today's tasks")).toBeInTheDocument();
     expect(screen.queryByText("Loading today's plan")).not.toBeInTheDocument();
+  });
+
+  it("renders the points card", async () => {
+    taskService.today.mockResolvedValueOnce([task]);
+
+    renderDashboard();
+
+    const pointsCard = await screen.findByLabelText("Points summary");
+
+    expect(within(pointsCard).getByText("Total Points")).toBeInTheDocument();
+    expect(within(pointsCard).getByText("Points Earned Today")).toBeInTheDocument();
+    expect(within(pointsCard).getByText("24")).toBeInTheDocument();
+    expect(within(pointsCard).getByText("12")).toBeInTheDocument();
+  });
+
+  it("shows an error state if points summary fails", async () => {
+    pointService.summary.mockRejectedValueOnce(new Error("Points failed"));
+    taskService.today.mockResolvedValueOnce([task]);
+
+    renderDashboard();
+
+    const pointsCard = await screen.findByLabelText("Points summary");
+
+    expect(within(pointsCard).getByText("Points unavailable")).toBeInTheDocument();
+  });
+
+  it("updates points after completing a task", async () => {
+    taskService.today.mockResolvedValueOnce([task]);
+    taskService.toggle.mockResolvedValueOnce({
+      task: completedTask,
+      pointsAwarded: 12,
+      pointsSummary: updatedPointSummary
+    });
+
+    renderDashboard();
+
+    await screen.findByText("Complete focus sessions");
+    await userEvent.click(screen.getByRole("button", { name: /mark task complete/i }));
+
+    const pointsCard = await screen.findByLabelText("Points summary");
+
+    expect(await screen.findByText("+12 points earned")).toBeInTheDocument();
+    expect(within(pointsCard).getByText("36")).toBeInTheDocument();
+    expect(within(pointsCard).getByText("24")).toBeInTheDocument();
   });
 
   it("shows refresh loading state", async () => {

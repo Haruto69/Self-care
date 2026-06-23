@@ -94,6 +94,17 @@ export const taskService = {
   }
 };
 
+export const pointService = {
+  summary: async () => {
+    const { data } = await api.get("/points/summary");
+    return data;
+  },
+  history: async () => {
+    const { data } = await api.get("/points/history");
+    return data;
+  }
+};
+
 export const checkInService = {
   create: async (payload) => {
     const { data } = await api.post("/checkins", payload);

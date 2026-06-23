@@ -3,25 +3,47 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import LoadingSpinner from "../components/LoadingSpinner.jsx";
 import TaskCard from "../components/TaskCard.jsx";
-import { taskService } from "../services/api.js";
+import { pointService, taskService } from "../services/api.js";
 import { getCompletionRate, getGoalDefinition, groupTasksByGoal } from "../utils/goalLabels.js";
+
+const DEFAULT_POINTS_SUMMARY = {
+  totalPoints: 0,
+  lifetimePoints: 0,
+  currentLevel: 1,
+  pointsEarnedToday: 0,
+  lastPointAwardDate: null
+};
 
 function DashboardPage() {
   const [tasks, setTasks] = useState([]);
+  const [pointsSummary, setPointsSummary] = useState(DEFAULT_POINTS_SUMMARY);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [togglingIds, setTogglingIds] = useState([]);
   const [error, setError] = useState("");
+  const [pointsError, setPointsError] = useState("");
   const [notice, setNotice] = useState("");
 
   const completion = getCompletionRate(tasks);
 
   const groupedTasks = useMemo(() => Object.values(groupTasksByGoal(tasks)), [tasks]);
 
+  const loadPointsSummary = async () => {
+    try {
+      const summary = await pointService.summary();
+      setPointsSummary(summary);
+      setPointsError("");
+    } catch (apiError) {
+      setPointsSummary(DEFAULT_POINTS_SUMMARY);
+      setPointsError(apiError.response?.data?.message || "Points unavailable");
+    }
+  };
+
   const loadTasks = async () => {
     setError("");
     setNotice("");
     setLoading(true);
+    const pointsPromise = loadPointsSummary();
 
     try {
       const today = await taskService.today();
@@ -35,6 +57,7 @@ function DashboardPage() {
     } catch (apiError) {
       setError(apiError.response?.data?.message || "Could not load today's tasks");
     } finally {
+      await pointsPromise;
       setLoading(false);
     }
   };
@@ -64,8 +87,19 @@ function DashboardPage() {
     );
 
     try {
-      const updated = await taskService.toggle(id);
-      setTasks((current) => current.map((task) => (task._id === id ? updated : task)));
+      const result = await taskService.toggle(id);
+      const updatedTask = result.task || result;
+
+      setTasks((current) => current.map((task) => (task._id === id ? updatedTask : task)));
+
+      if (result.pointsSummary) {
+        setPointsSummary(result.pointsSummary);
+        setPointsError("");
+      }
+
+      if (result.pointsAwarded > 0) {
+        setNotice(`+${result.pointsAwarded} points earned`);
+      }
     } catch (apiError) {
       setTasks((current) => current.map((task) => (task._id === id ? previousTask : task)));
       setError(apiError.response?.data?.message || "Could not update that task. Your change was undone.");
@@ -102,11 +136,30 @@ function DashboardPage() {
           <h1>Your self-care rhythm</h1>
           <p>{tasks.length ? `${tasks.length} tasks generated for today.` : "No tasks generated yet."}</p>
         </div>
-        <div className="completion-card">
-          <strong>{completion}%</strong>
-          <span>complete</span>
-          <div className="progress-track" aria-label="Today's completion">
-            <span style={{ width: `${completion}%` }} />
+        <div className="dashboard-stat-cards">
+          <div className="completion-card">
+            <strong>{completion}%</strong>
+            <span>complete</span>
+            <div className="progress-track" aria-label="Today's completion">
+              <span style={{ width: `${completion}%` }} />
+            </div>
+          </div>
+          <div className="points-card" aria-label="Points summary">
+            <span className="eyebrow">Points</span>
+            {pointsError ? (
+              <p className="muted">Points unavailable</p>
+            ) : (
+              <>
+                <div className="points-line">
+                  <span>Total Points</span>
+                  <strong>{pointsSummary.totalPoints}</strong>
+                </div>
+                <div className="points-line">
+                  <span>Points Earned Today</span>
+                  <strong>{pointsSummary.pointsEarnedToday}</strong>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

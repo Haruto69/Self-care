@@ -2,6 +2,7 @@ import Goal from "../models/Goal.js";
 import Task from "../models/Task.js";
 import asyncHandler from "../utils/asyncHandler.js";
 import { buildTasksForGoal } from "../goalRules/index.js";
+import { awardTaskCompletionPoints, getPointsSummary } from "../services/pointService.js";
 import { cleanupDuplicateGeneratedTasks } from "../utils/taskMaintenance.js";
 import { validateDateOnly, validateObjectId, validatePositiveDays } from "../utils/validation.js";
 
@@ -169,19 +170,31 @@ export const generateTasks = asyncHandler(async (req, res) => {
 export const toggleTask = asyncHandler(async (req, res) => {
   validateObjectId(req.params.id, "task id");
 
-  const task = await Task.findOne({ _id: req.params.id, userId: req.user._id });
+  const task = await Task.findOne({ _id: req.params.id, userId: req.user._id }).populate(taskPopulate);
 
   if (!task) {
     res.status(404);
     throw new Error("Task not found");
   }
 
+  const wasCompleted = task.completed;
   task.completed = !task.completed;
   task.completedAt = task.completed ? new Date() : null;
   await task.save();
 
-  const populatedTask = await task.populate(taskPopulate);
-  res.json(populatedTask);
+  const pointResult = !wasCompleted && task.completed
+    ? await awardTaskCompletionPoints({ task, userId: req.user._id })
+    : {
+        pointsAwarded: 0,
+        pointsSummary: await getPointsSummary(req.user._id),
+        transaction: null
+      };
+
+  res.json({
+    task,
+    pointsAwarded: pointResult.pointsAwarded,
+    pointsSummary: pointResult.pointsSummary
+  });
 });
 
 export const getTaskHistory = asyncHandler(async (req, res) => {

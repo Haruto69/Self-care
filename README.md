@@ -12,7 +12,9 @@ Self-care is a beginner-friendly MERN web app that helps users choose personal i
 - Template-driven setup forms for each goal.
 - Rules-based daily task generation from user inputs.
 - Dashboard with today's tasks grouped by goal.
-- Task completion checkboxes and completion percentage.
+- Points Card with total points and points earned today.
+- Task completion checkboxes, completion percentage, and point rewards.
+- Point transaction history for auditability and future rewards.
 - Progress page with simple goal summaries.
 - Profile/settings page with logout and data reset.
 - Backend validation for goal options, dates, and ObjectIds.
@@ -42,6 +44,7 @@ server/
   middleware/
   models/
   routes/
+  services/
   tests/
   utils/
 
@@ -177,6 +180,11 @@ Tasks:
 - `POST /api/tasks/generate`
 - `PUT /api/tasks/:id/toggle`
 - `GET /api/tasks/history`
+
+Points:
+
+- `GET /api/points/summary`
+- `GET /api/points/history`
 
 Check-ins:
 

@@ -422,6 +422,7 @@ a {
 .auth-card,
 .empty-state,
 .completion-card,
+.points-card,
 .metrics-row article {
   border: 1px solid var(--line);
   border-top: 5px solid var(--accent, var(--sage));
@@ -532,6 +533,13 @@ a {
   box-shadow: var(--shadow);
 }
 
+
+.dashboard-stat-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(180px, 1fr));
+  gap: 12px;
+  min-width: min(500px, 100%);
+}
 .completion-card {
   display: grid;
   gap: 8px;
@@ -542,6 +550,30 @@ a {
 
 .completion-card strong {
   font-size: 3rem;
+}
+.points-card {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 220px;
+  padding: 18px;
+  --accent: var(--teal);
+}
+
+.points-line {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  font-weight: 900;
+}
+
+.points-line span {
+  color: var(--muted);
+}
+
+.points-line strong {
+  font-size: 1.8rem;
 }
 
 .progress-track {
@@ -780,7 +812,9 @@ a {
     flex-direction: column;
   }
 
-  .completion-card {
+  .dashboard-stat-cards,
+  .completion-card,
+  .points-card {
     width: 100%;
   }
 
@@ -808,6 +842,10 @@ a {
 
   .button {
     width: 100%;
+  }
+
+  .dashboard-stat-cards {
+    grid-template-columns: 1fr;
   }
 
   .setup-panel,

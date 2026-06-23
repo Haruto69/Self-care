@@ -2,6 +2,23 @@
 
 All notable changes to this project will be documented in this file.
 
+## V1.0.2 - 2026-06-23
+
+### Main Features
+
+- Added a points system that awards users when they complete generated tasks.
+- Added centralized point values for Exercise, Skincare, and Focus daily and weekly tasks.
+- Added user point profiles with total points, lifetime points, current level, points earned today, and last award date.
+- Added a dashboard Points Card showing total points and points earned today.
+- Added point transaction history for future audits, rewards, levels, and achievements.
+
+### Technical Improvements
+
+- Added a point service so award logic stays separate from task generation and UI components.
+- Added authenticated point summary and point history API endpoints.
+- Added duplicate-award protection so repeated task toggles do not grant points again.
+- Added backend and frontend tests for point awards, summaries, transaction history, and dashboard updates.
+
 ## V1.0.0 - 2026-06-17
 
 ### Main Features
