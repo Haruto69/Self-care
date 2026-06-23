@@ -10,8 +10,18 @@ export const getGoalDefinition = (goalType) => {
   };
 };
 
-export const groupTasksByGoal = (tasks) => {
-  return tasks.reduce((groups, task) => {
+export const isDisplayableTask = (task) => {
+  return Boolean(
+    task &&
+      typeof task === "object" &&
+      task._id &&
+      typeof task.title === "string" &&
+      task.title.trim()
+  );
+};
+
+export const groupTasksByGoal = (tasks = []) => {
+  return tasks.filter(isDisplayableTask).reduce((groups, task) => {
     const goal = task.goalId || {};
     const key = goal._id || task.goalId || "unknown";
 
@@ -28,8 +38,9 @@ export const groupTasksByGoal = (tasks) => {
   }, {});
 };
 
-export const getCompletionRate = (items) => {
-  if (!items.length) return 0;
-  const completed = items.filter((item) => item.completed).length;
-  return Math.round((completed / items.length) * 100);
+export const getCompletionRate = (items = []) => {
+  const displayableItems = items.filter(isDisplayableTask);
+  if (!displayableItems.length) return 0;
+  const completed = displayableItems.filter((item) => item.completed).length;
+  return Math.round((completed / displayableItems.length) * 100);
 };

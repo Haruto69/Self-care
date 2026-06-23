@@ -80,13 +80,14 @@ describe("DashboardPage", () => {
     expect(screen.queryByText("Loading today's plan")).not.toBeInTheDocument();
   });
 
-  it("renders the points card", async () => {
+  it("renders the points card after loading the summary", async () => {
     taskService.today.mockResolvedValueOnce([task]);
 
     renderDashboard();
 
     const pointsCard = await screen.findByLabelText("Points summary");
 
+    expect(pointService.summary).toHaveBeenCalledTimes(1);
     expect(within(pointsCard).getByText("Total Points")).toBeInTheDocument();
     expect(within(pointsCard).getByText("Points Earned Today")).toBeInTheDocument();
     expect(within(pointsCard).getByText("24")).toBeInTheDocument();
@@ -104,7 +105,7 @@ describe("DashboardPage", () => {
     expect(within(pointsCard).getByText("Points unavailable")).toBeInTheDocument();
   });
 
-  it("updates points after completing a task", async () => {
+  it("updates points and keeps the task rendered from wrapped toggle responses", async () => {
     taskService.today.mockResolvedValueOnce([task]);
     taskService.toggle.mockResolvedValueOnce({
       task: completedTask,
@@ -120,8 +121,47 @@ describe("DashboardPage", () => {
     const pointsCard = await screen.findByLabelText("Points summary");
 
     expect(await screen.findByText("+12 points earned")).toBeInTheDocument();
+    expect(screen.getByText("Complete focus sessions")).toBeInTheDocument();
+    expect(screen.getByText("Focus / Studying")).toBeInTheDocument();
+    expect(screen.queryByText("Personal goal")).not.toBeInTheDocument();
     expect(within(pointsCard).getByText("36")).toBeInTheDocument();
     expect(within(pointsCard).getByText("24")).toBeInTheDocument();
+  });
+
+  it("supports legacy plain task toggle responses", async () => {
+    taskService.today.mockResolvedValueOnce([task]);
+    taskService.toggle.mockResolvedValueOnce(completedTask);
+
+    renderDashboard();
+
+    await screen.findByText("Complete focus sessions");
+    await userEvent.click(screen.getByRole("button", { name: /mark task complete/i }));
+
+    expect(screen.getByText("Complete focus sessions")).toBeInTheDocument();
+    expect(screen.getByText("Focus / Studying")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /mark task incomplete/i })).toBeInTheDocument();
+    expect(screen.queryByText("Personal goal")).not.toBeInTheDocument();
+  });
+
+  it("does not replace a valid task with a malformed toggle response", async () => {
+    taskService.today.mockResolvedValueOnce([task]);
+    taskService.toggle.mockResolvedValueOnce({
+      pointsAwarded: 12,
+      pointsSummary: updatedPointSummary
+    });
+
+    renderDashboard();
+
+    await screen.findByText("Complete focus sessions");
+    await userEvent.click(screen.getByRole("button", { name: /mark task complete/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Could not update that task. Your change was undone."
+    );
+    expect(screen.getByText("Complete focus sessions")).toBeInTheDocument();
+    expect(screen.getByText("Focus / Studying")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /mark task complete/i })).toBeInTheDocument();
+    expect(screen.queryByText("Personal goal")).not.toBeInTheDocument();
   });
 
   it("shows refresh loading state", async () => {

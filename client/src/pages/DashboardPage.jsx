@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 import LoadingSpinner from "../components/LoadingSpinner.jsx";
 import TaskCard from "../components/TaskCard.jsx";
 import { pointService, taskService } from "../services/api.js";
-import { getCompletionRate, getGoalDefinition, groupTasksByGoal } from "../utils/goalLabels.js";
+import { getCompletionRate, getGoalDefinition, groupTasksByGoal, isDisplayableTask } from "../utils/goalLabels.js";
 
 const DEFAULT_POINTS_SUMMARY = {
   totalPoints: 0,
@@ -12,6 +12,27 @@ const DEFAULT_POINTS_SUMMARY = {
   currentLevel: 1,
   pointsEarnedToday: 0,
   lastPointAwardDate: null
+};
+
+const sanitizeTaskList = (items = []) => items.filter(isDisplayableTask);
+
+const hasObjectGoal = (goalId) => goalId && typeof goalId === "object";
+
+const mergeToggleTask = (previousTask, responseTask) => {
+  if (!previousTask || !responseTask || typeof responseTask !== "object") return null;
+  if (String(responseTask._id || "") !== String(previousTask._id)) return null;
+
+  const mergedTask = {
+    ...previousTask,
+    ...responseTask,
+    goalId: hasObjectGoal(responseTask.goalId) ? responseTask.goalId : previousTask.goalId,
+    title:
+      typeof responseTask.title === "string" && responseTask.title.trim()
+        ? responseTask.title
+        : previousTask.title
+  };
+
+  return isDisplayableTask(mergedTask) ? mergedTask : null;
 };
 
 function DashboardPage() {
@@ -49,10 +70,10 @@ function DashboardPage() {
       const today = await taskService.today();
 
       if (today.length) {
-        setTasks(today);
+        setTasks(sanitizeTaskList(today));
       } else {
         const generated = await taskService.generate();
-        setTasks(generated.tasks);
+        setTasks(sanitizeTaskList(generated.tasks));
       }
     } catch (apiError) {
       setError(apiError.response?.data?.message || "Could not load today's tasks");
@@ -88,7 +109,11 @@ function DashboardPage() {
 
     try {
       const result = await taskService.toggle(id);
-      const updatedTask = result.task || result;
+      const updatedTask = mergeToggleTask(previousTask, result.task || result);
+
+      if (!updatedTask) {
+        throw new Error("Task update response was incomplete");
+      }
 
       setTasks((current) => current.map((task) => (task._id === id ? updatedTask : task)));
 
@@ -115,7 +140,7 @@ function DashboardPage() {
 
     try {
       const generated = await taskService.generate();
-      setTasks(generated.tasks);
+      setTasks(sanitizeTaskList(generated.tasks));
       setNotice(generated.message || (generated.changed ? "Tasks refreshed" : "Tasks are already up to date"));
     } catch (apiError) {
       setNotice("");

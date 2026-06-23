@@ -71,6 +71,18 @@ export const goalService = {
   }
 };
 
+
+const normalizeTaskToggleResponse = (data) => {
+  if (data && typeof data === "object" && "task" in data) {
+    return data;
+  }
+
+  return {
+    task: data,
+    pointsAwarded: 0,
+    pointsSummary: null
+  };
+};
 export const taskService = {
   today: async (date = getLocalDateOnly()) => {
     const { data } = await api.get("/tasks/today", { params: { date } });
@@ -86,7 +98,7 @@ export const taskService = {
   },
   toggle: async (id) => {
     const { data } = await api.put(`/tasks/${id}/toggle`);
-    return data;
+    return normalizeTaskToggleResponse(data);
   },
   history: async () => {
     const { data } = await api.get("/tasks/history");
