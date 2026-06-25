@@ -200,3 +200,11 @@ Check-ins:
 - Deleting a goal also deletes its related tasks and check-ins.
 - The profile page reset action deletes all goals for the current user, which also clears generated task history and check-ins.
 - JWT is stored in `localStorage` for V1. Move auth to httpOnly cookies before production hardening.
+
+## Disclaimer
+
+This app is a personal productivity and self-care tool. It is not medical advice, mental health treatment, diagnosis, or a replacement for professional care.
+
+## License
+
+This project is licensed under the MIT License.
